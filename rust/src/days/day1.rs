@@ -71,17 +71,17 @@ impl Dial {
         }
     }
 
-    fn rotate(self, rotations: &Rotations) -> impl Iterator<Item = Dial> {
+    fn rotate(self, rotations: Rotations) -> impl Iterator<Item = Dial> {
         let mut current = self;
         iter::from_fn(move || match rotations {
             Rotations::Left(d) => {
                 current.turn_left();
-                Some((*d as usize, current))
+                Some((d as usize, current))
             }
 
             Rotations::Right(d) => {
                 current.turn_right();
-                Some((*d as usize, current))
+                Some((d as usize, current))
             }
         })
         .enumerate()
@@ -92,7 +92,7 @@ impl Dial {
 
 pub struct Puzzle1;
 impl PuzzleResolver for Puzzle1 {
-    fn resolve(file_name: &str) -> Result<String, PuzzleError> {
+    fn resolve(&self, file_name: &str) -> Result<String, PuzzleError> {
         let mut zeros = 0;
         let mut dial = Dial {
             size: 100,
@@ -101,27 +101,24 @@ impl PuzzleResolver for Puzzle1 {
 
         match read_lines::<Rotations>(file_name) {
             Ok(rotations) => {
-                for r in rotations.iter() {
+                for r in rotations {
                     dial.rotate(r).for_each(|d| {
                         dial = d;
                     });
                     if dial.position == 0 {
                         zeros += 1
                     }
-
-                    println!("{:?}", dial);
                 }
-                println!("found zero postions: {:?}", zeros);
                 Ok(format!("{}", zeros))
             }
-            Err(_) => Err(PuzzleError),
+            Err(err) => Err(err),
         }
     }
 }
 
 pub struct Puzzle2;
 impl PuzzleResolver for Puzzle2 {
-    fn resolve(file_name: &str) -> Result<String, PuzzleError> {
+    fn resolve(&self, file_name: &str) -> Result<String, PuzzleError> {
         let mut zeros = 0;
         let mut dial = Dial {
             size: 100,
@@ -130,20 +127,17 @@ impl PuzzleResolver for Puzzle2 {
 
         match read_lines::<Rotations>(file_name) {
             Ok(rotations) => {
-                for r in rotations.iter() {
+                for r in rotations {
                     dial.rotate(r).for_each(|d| {
                         if dial.position == 0 {
                             zeros += 1
                         }
                         dial = d;
                     });
-
-                    println!("{:?}", dial);
                 }
-                println!("found zero postions: {:?}", zeros);
                 Ok(format!("{}", zeros))
             }
-            Err(_) => Err(PuzzleError),
+            Err(e) => Err(e),
         }
     }
 }
@@ -154,11 +148,11 @@ mod tests {
 
     #[test]
     fn verify_puzzle1_sample() {
-        assert_eq!(Puzzle1::resolve("day1.txt.sample").unwrap(), "3");
+        assert_eq!(Puzzle1.resolve("day1.txt.sample").unwrap(), "3");
     }
 
     #[test]
     fn verify_puzzle2_sample() {
-        assert_eq!(Puzzle2::resolve("day1.txt.sample").unwrap(), "6")
+        assert_eq!(Puzzle2.resolve("day1.txt.sample").unwrap(), "6")
     }
 }

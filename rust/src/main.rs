@@ -8,34 +8,65 @@ use crate::days::day1;
 pub mod days;
 
 #[derive(Debug)]
-struct PuzzleError;
+struct PuzzleError(String);
+
+impl From<std::io::Error> for PuzzleError {
+    fn from(value: std::io::Error) -> Self {
+        PuzzleError(value.to_string())
+    }
+}
 
 trait PuzzleResolver {
-    fn resolve(file_name: &str) -> Result<String, PuzzleError>;
+    fn resolve(&self, file_name: &str) -> Result<String, PuzzleError>;
+}
+
+struct Puzzle<'a> {
+    name: &'a str,
+    file_name: &'a str,
+    resolver: &'a dyn PuzzleResolver,
 }
 
 fn main() {
-    println!("{}", day1::Puzzle1::resolve("day1.txt").unwrap());
-    println!("{}", day1::Puzzle2::resolve("day1.txt").unwrap());
-    println!("END");
+    let puzzles = &[
+        Puzzle {
+            name: "Day1->puzzle1",
+            file_name: "day1.txtt",
+            resolver: &day1::Puzzle1,
+        },
+        Puzzle {
+            name: "Day1->puzzle2",
+            file_name: "day1.txt",
+            resolver: &day1::Puzzle2,
+        },
+    ];
+
+    for puzzle in puzzles {
+        println!(
+            "{}'s result: {:?}",
+            puzzle.name,
+            puzzle.resolver.resolve(puzzle.file_name).unwrap()
+        );
+    }
 }
 
-fn read_lines<R: std::str::FromStr>(file_name: &str) -> Result<Vec<R>, Box<dyn std::error::Error>>
+fn read_lines<R: std::str::FromStr>(file_name: &str) -> Result<impl Iterator<Item = R>, PuzzleError>
 where
     R::Err: std::fmt::Debug,
 {
     let file = fs::File::open(file_name)?;
-    let reader = BufReader::new(file);
+    let lines = BufReader::new(file).lines();
 
-    reader
-        .lines()
-        .enumerate()
-        .map(|(i, raw_line)| {
-            let line = raw_line.map_err(|e| format!("IO error at line {}: {}", i + 1, e))?;
-            let record = line
-                .parse::<R>()
-                .map_err(|e| format!("Parse error at line {}: {:?}", i + 1, e))?;
-            Ok(record)
+    Ok(lines
+        .inspect(|l| {
+            if let Err(e) = l {
+                panic!("ERROR ! {:?}", e)
+            }
         })
-        .collect::<Result<Vec<_>, _>>()
+        .filter_map(Result::ok)
+        .enumerate()
+        .map(|(i, line)| {
+            line.parse::<R>()
+                .inspect_err(|e| panic!("Line {},  {:?}: {}", i, e, line))
+        })
+        .filter_map(Result::ok))
 }
