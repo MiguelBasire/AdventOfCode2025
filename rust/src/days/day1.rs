@@ -7,6 +7,12 @@ pub enum Rotations {
     Right(u16),
 }
 
+#[derive(Clone)]
+enum Rotation {
+    Left,
+    Right,
+}
+
 #[derive(Debug)]
 pub enum ParseRotationError {
     BadFormat,
@@ -71,74 +77,66 @@ impl Dial {
         }
     }
 
-    fn rotate(self, rotations: Rotations) -> impl Iterator<Item = Dial> {
-        let mut current = self;
-        iter::from_fn(move || match rotations {
-            Rotations::Left(d) => {
-                current.turn_left();
-                Some((d as usize, current))
-            }
+    fn at_zero(self) -> bool {
+        self.position == 0
+    }
+}
 
-            Rotations::Right(d) => {
-                current.turn_right();
-                Some((d as usize, current))
-            }
-        })
-        .enumerate()
-        .take_while(|(i, (d, _))| i < d)
-        .map(|(_, (_, dial))| dial)
+fn rotations(r: Rotations) -> impl Iterator<Item = Rotation> {
+    match r {
+        Rotations::Right(d) => iter::repeat_n(Rotation::Right, d as usize),
+        Rotations::Left(d) => iter::repeat_n(Rotation::Left, d as usize),
     }
 }
 
 pub struct Puzzle1;
 impl PuzzleResolver for Puzzle1 {
     fn resolve(&self, file_name: &str) -> Result<String, PuzzleError> {
-        let mut zeros = 0;
-        let mut dial = Dial {
+        let dial = Dial {
             size: 100,
             position: 50,
         };
 
-        match read_lines::<Rotations>(file_name) {
-            Ok(rotations) => {
-                for r in rotations {
-                    dial.rotate(r).for_each(|d| {
-                        dial = d;
+        read_lines::<Rotations>(file_name).map(|rs| {
+            let zeros = rs
+                .scan(dial, |rotating_dial, rs| {
+                    rotations(rs).for_each(|r| match r {
+                        Rotation::Right => rotating_dial.turn_right(),
+                        Rotation::Left => rotating_dial.turn_left(),
                     });
-                    if dial.position == 0 {
-                        zeros += 1
-                    }
-                }
-                Ok(format!("{}", zeros))
-            }
-            Err(err) => Err(err),
-        }
+                    Some(*rotating_dial)
+                })
+                .filter(|d| d.at_zero())
+                .count();
+
+            format!("{}", zeros)
+        })
     }
 }
 
 pub struct Puzzle2;
 impl PuzzleResolver for Puzzle2 {
     fn resolve(&self, file_name: &str) -> Result<String, PuzzleError> {
-        let mut zeros = 0;
-        let mut dial = Dial {
+        let dial = Dial {
             size: 100,
             position: 50,
         };
 
-        match read_lines::<Rotations>(file_name) {
-            Ok(rotations) => {
-                for r in rotations {
-                    dial.rotate(r).for_each(|d| {
-                        if dial.position == 0 {
-                            zeros += 1
-                        }
-                        dial = d;
-                    });
-                }
-                Ok(format!("{}", zeros))
-            }
-            Err(e) => Err(e),
-        }
+        read_lines::<Rotations>(file_name).map(|rs| {
+            let zeros = rs
+                .flat_map(rotations)
+                .scan(dial, |rotating_dial, r| {
+                    match r {
+                        Rotation::Right => rotating_dial.turn_right(),
+                        Rotation::Left => rotating_dial.turn_left(),
+                    };
+                    Some(*rotating_dial)
+                })
+                .filter(|d| d.at_zero())
+                .count();
+
+            format!("{}", zeros)
+        })
     }
 }
 

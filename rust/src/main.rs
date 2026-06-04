@@ -30,7 +30,7 @@ fn main() {
     let puzzles = &[
         Puzzle {
             name: "Day1->puzzle1",
-            file_name: "day1.txtt",
+            file_name: "day1.txt",
             resolver: &day1::Puzzle1,
         },
         Puzzle {
